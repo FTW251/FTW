@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>甘肃民俗文化展示平台 - 首页</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header" id="site-header"></header>
+
+<section class="hero">
+  <h1>甘肃民俗文化展示平台</h1>
+  <p>汇集花儿、社火、香包、皮影、太平鼓……走进陇原大地的非遗与民俗世界，浏览图文影像、检索文化资源、收藏与分享你喜爱的民俗故事。</p>
+  <form class="search-quick" id="quickSearchForm">
+    <input type="text" id="quickSearchInput" placeholder="搜索：花儿 / 香包 / 庙会 / 临夏砖雕 ...">
+    <button class="btn" type="submit">搜索</button>
+  </form>
+</section>
+
+<main class="container">
+
+  <div class="section">
+    <div class="section-title"><h2>民俗文化分类</h2><a href="browse.html">查看全部 →</a></div>
+    <div class="category-grid" id="categoryGrid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><h2>非遗专题展示</h2><a href="browse.html?heritage=1">查看更多 →</a></div>
+    <div class="card-grid" id="heritageGrid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><h2>热门推荐</h2><a href="search.html?sort=views">查看更多 →</a></div>
+    <div class="card-grid" id="hotGrid"></div>
+  </div>
+
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/interactions.js"></script>
+<script src="js/catalog.js"></script>
+<script>
+initLayout('home');
+
+// 分类导航
+const categoryGrid = document.getElementById('categoryGrid');
+categoryGrid.innerHTML = CATEGORIES.map(c =>
+  `<a class="category-card" href="browse.html?cat=${c.id}" style="text-decoration:none;">
+     <span class="icon">${c.icon}</span><span class="name">${c.name}</span>
+   </a>`).join('');
+
+const published = getResources().filter(r => r.status === 'published');
+
+// 非遗专题
+const heritageItems = published.filter(r => r.nonHeritage).slice(0, 3);
+document.getElementById('heritageGrid').innerHTML = heritageItems.map(resourceCardHtml).join('') || '<div class="empty-state">暂无内容</div>';
+
+// 热门推荐（按浏览量，浏览量相同则保持原顺序）
+const hotItems = [...published].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 6);
+document.getElementById('hotGrid').innerHTML = hotItems.map(resourceCardHtml).join('') || '<div class="empty-state">暂无内容</div>';
+
+document.getElementById('quickSearchForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const q = document.getElementById('quickSearchInput').value.trim();
+  window.location.href = 'search.html' + (q ? ('?q=' + encodeURIComponent(q)) : '');
+});
+</script>
+</body>
+</html>

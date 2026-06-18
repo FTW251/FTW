@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理后台 - 甘肃民俗文化展示平台</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header" id="site-header"></header>
+
+<main class="container">
+  <div class="section" id="guardArea"></div>
+
+  <div class="section" id="adminArea" style="display:none;">
+    <div class="section-title"><h2>系统管理后台</h2></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="users">用户管理</button>
+      <button class="tab-btn" data-tab="catalog">资源管理（录入/修改/删除）</button>
+      <button class="tab-btn" data-tab="rfid">RFID标签管理</button>
+      <button class="tab-btn" data-tab="review">内容审核</button>
+      <button class="tab-btn" data-tab="logs">系统日志</button>
+      <button class="tab-btn" data-tab="backup">数据备份</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-users">
+      <table class="data-table">
+        <thead><tr><th>用户名</th><th>昵称</th><th>角色</th><th>注册时间</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody id="userTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 联机编目模块：信息录入 / 信息修改 / 信息删除 -->
+    <div class="tab-panel" id="tab-catalog">
+      <p style="font-size:13px;color:var(--color-muted);margin-top:0;">联机编目：民俗项目（藏品）信息的录入、修改与删除，删除时将级联清理关联的评论、收藏与RFID标签绑定。</p>
+
+      <div class="form-card" id="resourceFormCard" style="margin:0 0 20px;max-width:100%;display:none;">
+        <h3 id="resourceFormTitle" style="margin-top:0;">新增民俗项目</h3>
+        <form id="resourceForm">
+          <input type="hidden" id="resId">
+          <div class="form-group"><label>名称 *</label><input type="text" id="resTitle" required></div>
+          <div class="form-group"><label>分类 *</label><select id="resCategory"></select></div>
+          <div class="form-group"><label>地区</label><input type="text" id="resRegion" placeholder="如：临夏 / 甘南"></div>
+          <div class="form-group"><label>呈现类型</label>
+            <select id="resType"><option value="图文">图文</option><option value="文字">文字</option><option value="视频">视频</option></select>
+          </div>
+          <div class="form-group"><label>非遗级别说明</label><input type="text" id="resHeritage" placeholder="如：国家级 · 第一批（2006年）"></div>
+          <div class="form-group"><label>图标 Emoji</label><input type="text" id="resIcon" placeholder="留空则按分类自动取图标"></div>
+          <div class="form-group"><label>卡片摘要</label><textarea id="resSummary" style="min-height:60px;"></textarea></div>
+          <div class="form-group"><label>详细介绍</label><textarea id="resContent" style="min-height:120px;"></textarea></div>
+          <div class="form-group"><label>标签（逗号分隔）</label><input type="text" id="resTags" placeholder="如：非遗,刺绣,端午"></div>
+          <div class="form-group"><label><input type="checkbox" id="resNonHeritage" style="width:auto;"> 标记为「非遗专题」</label></div>
+          <div class="form-group"><label>发布状态</label>
+            <select id="resStatus"><option value="pending">待审核</option><option value="published">已发布</option></select>
+          </div>
+          <div id="resourceFormAlert"></div>
+          <div class="form-actions" style="display:flex;gap:10px;">
+            <button class="btn" type="submit" style="width:auto;">保存</button>
+            <button class="btn btn-ghost" type="button" id="resourceFormCancel" style="width:auto;">取消</button>
+          </div>
+        </form>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <button class="btn" id="addResourceBtn">+ 新增民俗项目（信息录入）</button>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>名称</th><th>分类</th><th>地区</th><th>状态</th><th>RFID编目</th><th>操作</th></tr></thead>
+        <tbody id="resManageTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 联机编目模块：RFID标签管理 -->
+    <div class="tab-panel" id="tab-rfid">
+      <p style="font-size:13px;color:var(--color-muted);margin-top:0;">为民俗项目（藏品）绑定RFID标签，并可模拟与RFID读写设备之间的写入/读取交互。</p>
+      <table class="data-table">
+        <thead><tr><th>民俗项目</th><th>标签编号</th><th>绑定时间</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody id="rfidTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="tab-panel" id="tab-review">
+      <table class="data-table">
+        <thead><tr><th>标题</th><th>分类</th><th>地区</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody id="resTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="tab-panel" id="tab-logs">
+      <table class="data-table">
+        <thead><tr><th>时间</th><th>操作</th><th>详情</th></tr></thead>
+        <tbody id="logTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="tab-panel" id="tab-backup">
+      <div class="form-card" style="margin:0;max-width:520px;">
+        <p style="font-size:14px;color:var(--color-muted);">将当前平台的全部数据（用户、民俗文化资源、评论与收藏记录）导出为一份 JSON 文件，便于备份或迁移。</p>
+        <button class="btn" id="backupBtn">导出数据备份（JSON）</button>
+        <div id="backupAlert" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/interactions.js"></script>
+<script src="js/catalog.js"></script>
+<script>
+initLayout('');
+
+const me = getCurrentUser();
+if (!me || me.role !== 'admin') {
+  document.getElementById('guardArea').innerHTML = `<div class="empty-state">该页面仅管理员可访问。${me ? '' : '请先 <a href=\"login.html?next=admin.html\">登录</a>。'}</div>`;
+} else {
+  document.getElementById('adminArea').style.display = 'block';
+
+  // ---------- 用户管理 ----------
+  function renderUsers() {
+    const users = getJSON(STORAGE_KEYS.USERS, []);
+    document.getElementById('userTableBody').innerHTML = users.map(u => `
+      <tr>
+        <td>${escapeHtml(u.username)}</td>
+        <td>${escapeHtml(u.nickname || '')}</td>
+        <td>${u.role === 'admin' ? '管理员' : '注册用户'}</td>
+        <td>${escapeHtml(u.registerTime || '')}</td>
+        <td class="${u.status === 'active' ? 'status-active' : 'status-disabled'}">${u.status === 'active' ? '正常' : '已禁用'}</td>
+        <td>
+          ${u.role === 'admin' ? '<span style="color:var(--color-muted);">— </span>' :
+            `<button class="btn btn-sm ${u.status === 'active' ? 'btn-danger' : ''}" data-id="${u.id}" data-action="toggle-user">${u.status === 'active' ? '禁用' : '启用'}</button>`}
+        </td>
+      </tr>`).join('');
+
+    document.querySelectorAll('[data-action="toggle-user"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const users = getJSON(STORAGE_KEYS.USERS, []);
+        const u = users.find(x => x.id === btn.dataset.id);
+        u.status = u.status === 'active' ? 'disabled' : 'active';
+        setJSON(STORAGE_KEYS.USERS, users);
+        addLog('用户状态变更', `${me.username} 将 ${u.username} 设为 ${u.status}`);
+        renderUsers();
+      });
+    });
+  }
+  renderUsers();
+
+  // ---------- 内容审核 ----------
+  function renderResources() {
+    const list = getResources();
+    document.getElementById('resTableBody').innerHTML = list.map(r => `
+      <tr>
+        <td>${r.icon} ${escapeHtml(r.title)}</td>
+        <td>${categoryName(r.category)}</td>
+        <td>${escapeHtml(r.region)}</td>
+        <td class="${r.status === 'published' ? 'status-published' : 'status-pending'}">${r.status === 'published' ? '已发布' : '待审核'}</td>
+        <td>
+          ${r.status === 'pending'
+            ? `<button class="btn btn-sm" data-id="${r.id}" data-action="approve">审核通过</button>`
+            : `<button class="btn btn-sm btn-danger" data-id="${r.id}" data-action="unpublish">下架</button>`}
+        </td>
+      </tr>`).join('');
+
+    document.querySelectorAll('[data-action="approve"], [data-action="unpublish"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const list = getResources();
+        const r = list.find(x => x.id === btn.dataset.id);
+        r.status = btn.dataset.action === 'approve' ? 'published' : 'pending';
+        saveResources(list);
+        addLog('内容审核', `${me.username} 将《${r.title}》设为 ${r.status}`);
+        renderResources();
+        if (typeof renderResourceManage === 'function') renderResourceManage();
+        if (typeof renderLogs === 'function') renderLogs();
+      });
+    });
+  }
+  renderResources();
+
+  // ---------- 联机编目：资源管理（信息录入 / 信息修改 / 信息删除） ----------
+  const resCategorySelect = document.getElementById('resCategory');
+  resCategorySelect.innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+
+  const resourceFormCard = document.getElementById('resourceFormCard');
+  const resourceForm = document.getElementById('resourceForm');
+
+  function openResourceForm(resource) {
+    resourceFormCard.style.display = 'block';
+    document.getElementById('resourceFormAlert').innerHTML = '';
+    if (resource) {
+      document.getElementById('resourceFormTitle').textContent = '修改民俗项目';
+      document.getElementById('resId').value = resource.id;
+      document.getElementById('resTitle').value = resource.title;
+      document.getElementById('resCategory').value = resource.category;
+      document.getElementById('resRegion').value = resource.region || '';
+      document.getElementById('resType').value = resource.type || '图文';
+      document.getElementById('resHeritage').value = resource.heritage || '';
+      document.getElementById('resIcon').value = resource.icon || '';
+      document.getElementById('resSummary').value = resource.summary || '';
+      document.getElementById('resContent').value = resource.content || '';
+      document.getElementById('resTags').value = (resource.tags || []).join(',');
+      document.getElementById('resNonHeritage').checked = !!resource.nonHeritage;
+      document.getElementById('resStatus').value = resource.status || 'pending';
+    } else {
+      document.getElementById('resourceFormTitle').textContent = '新增民俗项目';
+      resourceForm.reset();
+      document.getElementById('resId').value = '';
+    }
+    resourceFormCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  document.getElementById('addResourceBtn').addEventListener('click', () => openResourceForm(null));
+  document.getElementById('resourceFormCancel').addEventListener('click', () => { resourceFormCard.style.display = 'none'; });
+
+  resourceForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const payload = {
+      title: document.getElementById('resTitle').value,
+      category: document.getElementById('resCategory').value,
+      region: document.getElementById('resRegion').value,
+      type: document.getElementById('resType').value,
+      heritage: document.getElementById('resHeritage').value,
+      icon: document.getElementById('resIcon').value,
+      summary: document.getElementById('resSummary').value,
+      content: document.getElementById('resContent').value,
+      tags: document.getElementById('resTags').value,
+      nonHeritage: document.getElementById('resNonHeritage').checked,
+      status: document.getElementById('resStatus').value
+    };
+    const id = document.getElementById('resId').value;
+    const result = id ? adminUpdateResource(id, payload) : adminAddResource(payload);
+    const alertBox = document.getElementById('resourceFormAlert');
+    if (!result.ok) {
+      alertBox.innerHTML = `<div class="alert alert-error">${escapeHtml(result.msg)}</div>`;
+      return;
+    }
+    resourceFormCard.style.display = 'none';
+    renderResourceManage();
+    renderResources();
+    renderRfidTable();
+    renderLogs();
+  });
+
+  function renderResourceManage() {
+    const list = getResources();
+    document.getElementById('resManageTableBody').innerHTML = list.length ? list.map(r => {
+      const tag = getRfidByFolkId(r.id);
+      const rfidCell = tag
+        ? `🏷 ${escapeHtml(tag.tagCode)}（${rfidStatusLabel(tag.status)}）`
+        : '<span style="color:var(--color-muted);">未绑定</span>';
+      return `
+      <tr>
+        <td>${r.icon} ${escapeHtml(r.title)}</td>
+        <td>${categoryName(r.category)}</td>
+        <td>${escapeHtml(r.region)}</td>
+        <td class="${r.status === 'published' ? 'status-published' : 'status-pending'}">${r.status === 'published' ? '已发布' : '待审核'}</td>
+        <td>${rfidCell}</td>
+        <td>
+          <button class="btn btn-sm" data-id="${r.id}" data-action="edit-res">修改</button>
+          <button class="btn btn-sm btn-danger" data-id="${r.id}" data-action="delete-res">删除</button>
+        </td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--color-muted);">暂无民俗项目，请先录入</td></tr>';
+
+    document.querySelectorAll('[data-action="edit-res"]').forEach(btn => {
+      btn.addEventListener('click', () => openResourceForm(getResourceById(btn.dataset.id)));
+    });
+    document.querySelectorAll('[data-action="delete-res"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const r = getResourceById(btn.dataset.id);
+        if (!confirm(`确定删除民俗项目《${r.title}》吗？关联的评论、收藏与RFID标签绑定将一并删除，此操作不可恢复。`)) return;
+        const result = adminDeleteResource(btn.dataset.id);
+        if (!result.ok) { alert(result.msg); return; }
+        renderResourceManage();
+        renderResources();
+        renderRfidTable();
+        renderLogs();
+      });
+    });
+  }
+  renderResourceManage();
+
+  // ---------- 联机编目：RFID标签管理 ----------
+  function renderRfidTable() {
+    const list = getResources();
+    document.getElementById('rfidTableBody').innerHTML = list.length ? list.map(r => {
+      const tag = getRfidByFolkId(r.id);
+      if (!tag) {
+        return `
+        <tr>
+          <td>${r.icon} ${escapeHtml(r.title)}</td>
+          <td colspan="2" style="color:var(--color-muted);">未绑定</td>
+          <td>—</td>
+          <td><button class="btn btn-sm" data-id="${r.id}" data-action="bind-rfid">绑定标签</button></td>
+        </tr>`;
+      }
+      return `
+      <tr>
+        <td>${r.icon} ${escapeHtml(r.title)}</td>
+        <td>${escapeHtml(tag.tagCode)}</td>
+        <td>${escapeHtml(tag.createTime)}</td>
+        <td>
+          <select data-id="${r.id}" data-action="status-rfid" style="padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;">
+            <option value="active" ${tag.status === 'active' ? 'selected' : ''}>正常</option>
+            <option value="lost" ${tag.status === 'lost' ? 'selected' : ''}>挂失</option>
+            <option value="disabled" ${tag.status === 'disabled' ? 'selected' : ''}>停用</option>
+          </select>
+        </td>
+        <td>
+          <button class="btn btn-sm" data-id="${r.id}" data-action="scan-rfid">模拟读取</button>
+          <button class="btn btn-sm btn-danger" data-id="${r.id}" data-action="unbind-rfid">解绑</button>
+        </td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--color-muted);">暂无民俗项目</td></tr>';
+
+    document.querySelectorAll('[data-action="bind-rfid"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const r = getResourceById(btn.dataset.id);
+        const suggested = generateTagCode();
+        const code = prompt(`为《${r.title}》绑定RFID标签编号（留空则使用自动生成的编号）：`, suggested);
+        if (code === null) return; // 用户取消
+        const result = bindRfidTag(btn.dataset.id, code);
+        if (!result.ok) { alert(result.msg); return; }
+        renderRfidTable();
+        renderResourceManage();
+        renderLogs();
+      });
+    });
+    document.querySelectorAll('[data-action="unbind-rfid"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!confirm('确定解绑该RFID标签吗？')) return;
+        const result = unbindRfidTag(btn.dataset.id);
+        if (!result.ok) { alert(result.msg); return; }
+        renderRfidTable();
+        renderResourceManage();
+        renderLogs();
+      });
+    });
+    document.querySelectorAll('[data-action="status-rfid"]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        setRfidStatus(sel.dataset.id, sel.value);
+        renderRfidTable();
+        renderResourceManage();
+        renderLogs();
+      });
+    });
+    document.querySelectorAll('[data-action="scan-rfid"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const result = simulateRfidScan(btn.dataset.id);
+        if (!result.ok) { alert(result.msg); return; }
+        alert(`模拟RFID设备读取成功\n标签编号：${result.tag.tagCode}\n关联藏品：${result.resource.title}\n设备状态：${result.deviceOk ? '正常' : '异常'}`);
+        renderLogs();
+      });
+    });
+  }
+  renderRfidTable();
+
+  // ---------- 系统日志 ----------
+  function renderLogs() {
+    const logs = getJSON(STORAGE_KEYS.LOGS, []);
+    document.getElementById('logTableBody').innerHTML = logs.length ? logs.slice(0, 100).map(l => `
+      <tr><td>${escapeHtml(l.time)}</td><td>${escapeHtml(l.action)}</td><td>${escapeHtml(l.detail || '')}</td></tr>
+    `).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--color-muted);">暂无日志</td></tr>';
+  }
+  renderLogs();
+
+  // ---------- 数据备份 ----------
+  document.getElementById('backupBtn').addEventListener('click', () => {
+    const dump = {
+      exportedAt: new Date().toISOString(),
+      users: getJSON(STORAGE_KEYS.USERS, []),
+      resources: getJSON(STORAGE_KEYS.RESOURCES, []),
+      interactions: getJSON(STORAGE_KEYS.INTERACTIONS, {}),
+      rfid: getJSON(STORAGE_KEYS.RFID, []),
+      logs: getJSON(STORAGE_KEYS.LOGS, [])
+    };
+    const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'gfcp_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    addLog('数据备份', me.username + ' 导出了数据备份');
+    document.getElementById('backupAlert').innerHTML = `<div class="alert alert-success">备份文件已生成并开始下载</div>`;
+    renderLogs();
+  });
+
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'logs') renderLogs();
+      if (btn.dataset.tab === 'catalog') renderResourceManage();
+      if (btn.dataset.tab === 'rfid') renderRfidTable();
+      if (btn.dataset.tab === 'review') renderResources();
+    });
+  });
+}
+</script>
+</body>
+</html>

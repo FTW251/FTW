@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>民俗文化展示 - 甘肃民俗文化展示平台</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header" id="site-header"></header>
+
+<main class="container">
+  <div class="section">
+    <div class="section-title"><h2 id="pageTitle">民俗文化展示</h2></div>
+
+    <div class="filter-bar">
+      <label style="font-size:13px;color:var(--color-muted);">分类：</label>
+      <select id="catSelect">
+        <option value="">全部分类</option>
+      </select>
+      <label style="font-size:13px;color:var(--color-muted);">类型：</label>
+      <select id="typeSelect">
+        <option value="">全部类型</option>
+        <option value="图文">图文</option>
+        <option value="文字">文字</option>
+        <option value="视频">视频</option>
+      </select>
+      <label style="font-size:13px;"><input type="checkbox" id="heritageOnly"> 仅看非遗专题</label>
+    </div>
+
+    <div class="card-grid" id="resultGrid"></div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/interactions.js"></script>
+<script src="js/catalog.js"></script>
+<script>
+initLayout('browse');
+
+const params = new URLSearchParams(window.location.search);
+const catSelect = document.getElementById('catSelect');
+const typeSelect = document.getElementById('typeSelect');
+const heritageOnly = document.getElementById('heritageOnly');
+
+catSelect.innerHTML += CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+
+if (params.get('cat')) catSelect.value = params.get('cat');
+if (params.get('heritage') === '1') heritageOnly.checked = true;
+
+function render() {
+  let list = getResources().filter(r => r.status === 'published');
+  if (catSelect.value) list = list.filter(r => r.category === catSelect.value);
+  if (typeSelect.value) list = list.filter(r => r.type === typeSelect.value);
+  if (heritageOnly.checked) list = list.filter(r => r.nonHeritage);
+
+  document.getElementById('pageTitle').textContent = catSelect.value
+    ? `民俗文化展示 - ${categoryName(catSelect.value)}`
+    : '民俗文化展示';
+
+  const grid = document.getElementById('resultGrid');
+  grid.innerHTML = list.length
+    ? list.map(resourceCardHtml).join('')
+    : '<div class="empty-state">该分类下暂无内容</div>';
+}
+
+[catSelect, typeSelect, heritageOnly].forEach(el => el.addEventListener('change', render));
+render();
+</script>
+</body>
+</html>

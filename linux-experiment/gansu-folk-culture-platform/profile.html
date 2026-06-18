@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人中心 - 甘肃民俗文化展示平台</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header" id="site-header"></header>
+
+<main class="container">
+  <div class="section" id="guardArea"></div>
+
+  <div class="section" id="profileArea" style="display:none;">
+    <div class="section-title"><h2>个人中心</h2></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="info">基本信息</button>
+      <button class="tab-btn" data-tab="favorites">我的收藏</button>
+      <button class="tab-btn" data-tab="comments">我的评论</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-info">
+      <div class="form-card" style="margin:0;">
+        <div id="infoAlert"></div>
+        <form id="infoForm">
+          <div class="form-group"><label>用户名</label><input type="text" id="usernameDisplay" disabled></div>
+          <div class="form-group"><label>角色</label><input type="text" id="roleDisplay" disabled></div>
+          <div class="form-group"><label>注册时间</label><input type="text" id="timeDisplay" disabled></div>
+          <div class="form-group"><label>昵称</label><input type="text" id="nicknameInput"></div>
+          <div class="form-actions"><button class="btn" type="submit">保存昵称</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-favorites">
+      <div class="card-grid" id="favGrid"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-comments">
+      <div id="myCommentsList"></div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/interactions.js"></script>
+<script src="js/catalog.js"></script>
+<script>
+initLayout('');
+
+const me = getCurrentUser();
+if (!me) {
+  document.getElementById('guardArea').innerHTML = `<div class="empty-state">请先 <a href="login.html?next=profile.html">登录</a> 后查看个人中心</div>`;
+} else {
+  document.getElementById('profileArea').style.display = 'block';
+  document.getElementById('usernameDisplay').value = me.username;
+  document.getElementById('roleDisplay').value = me.role === 'admin' ? '管理员' : '注册用户';
+  document.getElementById('timeDisplay').value = me.registerTime;
+  document.getElementById('nicknameInput').value = me.nickname || '';
+
+  document.getElementById('infoForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    updateProfile(me.id, { nickname: document.getElementById('nicknameInput').value.trim() || me.username });
+    document.getElementById('infoAlert').innerHTML = `<div class="alert alert-success">已保存，刷新页面后导航栏昵称将更新</div>`;
+  });
+
+  // 我的收藏
+  const favs = getFavoritesForUser(me.id);
+  const favResources = favs.map(f => getResourceById(f.resourceId)).filter(Boolean);
+  document.getElementById('favGrid').innerHTML = favResources.length
+    ? favResources.map(resourceCardHtml).join('')
+    : '<div class="empty-state">还没有收藏任何内容，去 <a href="browse.html">民俗展示</a> 看看吧</div>';
+
+  // 我的评论
+  function renderMyComments() {
+    const comments = getCommentsForUser(me.id);
+    document.getElementById('myCommentsList').innerHTML = comments.length ? comments.map(c => {
+      const r = getResourceById(c.resourceId);
+      return `<div class="comment-item">
+        <div class="c-head">
+          <span>评论于《<a href="detail.html?id=${c.resourceId}">${escapeHtml(r ? r.title : '已删除内容')}</a>》 · ${c.time}</span>
+          <a href="#" data-id="${c.id}" class="del-my-comment" style="color:#c0392b;">删除</a>
+        </div>
+        <div class="c-body">${escapeHtml(c.content)}</div>
+      </div>`;
+    }).join('') : '<div class="empty-state">还没有发表过评论</div>';
+
+    document.querySelectorAll('.del-my-comment').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm('确定删除这条评论吗？')) { deleteComment(a.dataset.id); renderMyComments(); }
+      });
+    });
+  }
+  renderMyComments();
+
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+</script>
+</body>
+</html>

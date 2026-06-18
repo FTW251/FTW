@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>信息检索 - 甘肃民俗文化展示平台</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header" id="site-header"></header>
+
+<main class="container">
+  <div class="section">
+    <div class="section-title"><h2>信息检索</h2></div>
+
+    <div class="filter-bar">
+      <input type="text" id="kw" placeholder="输入关键字：标题 / 简介 / 标签...">
+      <select id="catSelect"><option value="">全部分类</option></select>
+      <select id="regionSelect"><option value="">全部地区</option></select>
+      <select id="sortSelect">
+        <option value="default">默认排序</option>
+        <option value="views">按热度排序</option>
+        <option value="latest">按最新排序</option>
+      </select>
+      <button class="btn" id="searchBtn">搜索</button>
+    </div>
+
+    <div id="resultInfo" style="margin-bottom:10px;font-size:13px;color:var(--color-muted);"></div>
+    <div class="card-grid" id="resultGrid"></div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/interactions.js"></script>
+<script src="js/catalog.js"></script>
+<script>
+initLayout('search');
+
+const params = new URLSearchParams(window.location.search);
+const catSelect = document.getElementById('catSelect');
+const regionSelect = document.getElementById('regionSelect');
+const sortSelect = document.getElementById('sortSelect');
+const kwInput = document.getElementById('kw');
+
+catSelect.innerHTML += CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+
+const allRegions = [...new Set(getResources().map(r => r.region))];
+regionSelect.innerHTML += allRegions.map(r => `<option value="${r}">${r}</option>`).join('');
+
+if (params.get('q')) kwInput.value = params.get('q');
+if (params.get('sort')) sortSelect.value = params.get('sort');
+
+function runSearch() {
+  const kw = kwInput.value.trim().toLowerCase();
+  let list = getResources().filter(r => r.status === 'published');
+
+  if (kw) {
+    list = list.filter(r =>
+      r.title.toLowerCase().includes(kw) ||
+      r.summary.toLowerCase().includes(kw) ||
+      r.content.toLowerCase().includes(kw) ||
+      (r.tags || []).some(t => t.toLowerCase().includes(kw)) ||
+      r.region.toLowerCase().includes(kw)
+    );
+  }
+  if (catSelect.value) list = list.filter(r => r.category === catSelect.value);
+  if (regionSelect.value) list = list.filter(r => r.region === regionSelect.value);
+
+  if (sortSelect.value === 'views') {
+    list = [...list].sort((a, b) => (b.views || 0) - (a.views || 0));
+  } else if (sortSelect.value === 'latest') {
+    list = [...list].reverse();
+  }
+
+  document.getElementById('resultInfo').textContent = `共找到 ${list.length} 项结果`;
+  document.getElementById('resultGrid').innerHTML = list.length
+    ? list.map(resourceCardHtml).join('')
+    : '<div class="empty-state">没有找到匹配的内容，换个关键字试试</div>';
+}
+
+document.getElementById('searchBtn').addEventListener('click', runSearch);
+kwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
+[catSelect, regionSelect, sortSelect].forEach(el => el.addEventListener('change', runSearch));
+
+runSearch();
+</script>
+</body>
+</html>

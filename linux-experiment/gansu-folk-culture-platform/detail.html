@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>详情 - 甘肃民俗文化展示平台</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header" id="site-header"></header>
+
+<main class="container" id="mainArea" style="padding-top:24px;">
+  <div class="empty-state" id="notFound" style="display:none;">未找到该内容，可能已被删除或下架。 <a href="browse.html">返回浏览</a></div>
+
+  <div id="detailRoot" style="display:none;">
+    <div class="detail-hero">
+      <div class="thumb-big" id="thumbBig"></div>
+      <div class="info">
+        <h1 id="rTitle"></h1>
+        <div class="meta-row">
+          <span id="rRegion"></span>
+          <span id="rCategory"></span>
+          <span id="rType"></span>
+          <span id="rViews"></span>
+        </div>
+        <div id="rBadges"></div>
+        <div class="detail-actions">
+          <button class="btn" id="favBtn">☆ 收藏</button>
+          <button class="btn btn-outline" id="shareBtn" style="background:transparent;border:1px solid var(--color-primary);color:var(--color-primary);">分享</button>
+        </div>
+        <div class="catalog-info" id="catalogInfo" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="content-block">
+      <p id="rContent" style="white-space:pre-line;"></p>
+      <div class="tags" id="rTags" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="content-block">
+      <h3 style="margin-top:0;">评论 (<span id="commentCount">0</span>)</h3>
+      <div id="commentList"></div>
+      <div class="comment-form">
+        <textarea id="commentInput" placeholder="写下你的看法（需登录）..."></textarea>
+        <button class="btn" id="commentSubmit">发表</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/interactions.js"></script>
+<script src="js/catalog.js"></script>
+<script>
+initLayout('browse');
+
+const params = new URLSearchParams(window.location.search);
+const id = params.get('id');
+const resource = id ? getResourceById(id) : null;
+
+if (!resource) {
+  document.getElementById('notFound').style.display = 'block';
+} else {
+  bumpViews(id);
+  const r = getResourceById(id); // 重新取一次以拿到+1后的浏览量
+
+  document.getElementById('detailRoot').style.display = 'block';
+  document.title = r.title + ' - 甘肃民俗文化展示平台';
+  document.getElementById('thumbBig').style.background = r.color;
+  document.getElementById('thumbBig').textContent = r.icon;
+  document.getElementById('rTitle').textContent = r.title;
+  document.getElementById('rRegion').textContent = '📍 ' + r.region;
+  document.getElementById('rCategory').textContent = categoryIcon(r.category) + ' ' + categoryName(r.category);
+  document.getElementById('rType').textContent = '🗂 ' + r.type;
+  document.getElementById('rViews').textContent = '👁 浏览 ' + r.views;
+  document.getElementById('rContent').textContent = r.content;
+  document.getElementById('rTags').innerHTML = (r.tags || []).map(t => `<span class="tag">#${escapeHtml(t)}</span>`).join('');
+  document.getElementById('rBadges').innerHTML =
+    (r.nonHeritage ? `<span class="badge-heritage">非遗</span> ` : '') +
+    (r.heritage ? `<span class="tag">${escapeHtml(r.heritage)}</span>` : '');
+
+  function renderFavBtn() {
+    const fav = isFavorited(id);
+    const btn = document.getElementById('favBtn');
+    btn.textContent = fav ? '★ 已收藏' : '☆ 收藏';
+    btn.style.background = fav ? 'var(--color-primary)' : '';
+    btn.style.color = fav ? '#fff' : '';
+  }
+  renderFavBtn();
+  document.getElementById('favBtn').addEventListener('click', () => {
+    const result = toggleFavorite(id);
+    if (result !== null) renderFavBtn();
+  });
+  document.getElementById('shareBtn').addEventListener('click', () => shareResource(id, r.title));
+
+  // 联机编目信息：若该藏品已绑定RFID标签，则展示编目信息
+  const rfidTag = getRfidByFolkId(id);
+  if (rfidTag) {
+    document.getElementById('catalogInfo').style.display = 'flex';
+    document.getElementById('catalogInfo').innerHTML =
+      `<span>🏷 馆藏编目标签：<strong>${escapeHtml(rfidTag.tagCode)}</strong></span>` +
+      `<span>编目时间：${escapeHtml(rfidTag.createTime)}</span>` +
+      `<span>标签状态：${escapeHtml(rfidStatusLabel(rfidTag.status))}</span>`;
+  }
+
+  function renderComments() {
+    const list = getCommentsForResource(id);
+    document.getElementById('commentCount').textContent = list.length;
+    const me = getCurrentUser();
+    document.getElementById('commentList').innerHTML = list.length ? list.map(c => `
+      <div class="comment-item">
+        <div class="c-head">
+          <span>${escapeHtml(c.username)} · ${c.time}</span>
+          ${me && (me.id === c.userId || me.role === 'admin') ? `<a href="#" data-id="${c.id}" class="del-comment" style="color:#c0392b;">删除</a>` : ''}
+        </div>
+        <div class="c-body">${escapeHtml(c.content)}</div>
+      </div>`).join('') : '<div class="empty-state">还没有评论，来说两句吧</div>';
+
+    document.querySelectorAll('.del-comment').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm('确定删除这条评论吗？')) {
+          deleteComment(a.dataset.id);
+          renderComments();
+        }
+      });
+    });
+  }
+  renderComments();
+
+  document.getElementById('commentSubmit').addEventListener('click', () => {
+    const input = document.getElementById('commentInput');
+    const c = addComment(id, input.value);
+    if (c) { input.value = ''; renderComments(); }
+  });
+}
+</script>
+</body>
+</html>
